@@ -1,4 +1,8 @@
-import time, os, sys, pickle, math
+import time
+import os
+import sys
+import pickle
+import math
 import numpy as np
 import torch
 import torch.nn as nn
@@ -12,6 +16,7 @@ from utils import *
 
 
 NUM_WORKERS = 4
+
 
 class OsicDataset(Dataset):
     def __init__(self, arr, mode='train'):
@@ -68,16 +73,19 @@ class OsicModel:
         self.epoch = 0
         self.losses = []
 
-        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device(
+            'cuda:0' if torch.cuda.is_available() else 'cpu')
         print('DEVICE: {}'.format(self.device))
 
         self.net = net.to(self.device)
         self.optimizer = optim.Adam(self.net.parameters(), lr=learning_rate)
-        self.scheduler = optim.lr_scheduler.StepLR(self.optimizer, step_size=step_size, gamma=gamma)
+        self.scheduler = optim.lr_scheduler.StepLR(
+            self.optimizer, step_size=step_size, gamma=gamma)
 
     def print_model(self):
         print(self.net)
-        print('total trainable parameters: {}'.format(sum(p.numel() for p in self.net.parameters() if p.requires_grad)))
+        print('total trainable parameters: {}'.format(sum(p.numel()
+                                                          for p in self.net.parameters() if p.requires_grad)))
 
     def save_checkpoint(self, output_file, weights_only=False):
         checkpoint = {
@@ -104,7 +112,8 @@ class OsicModel:
     def predict(self, test_set, batch_size=4):
         output = []
         self.net.eval()
-        test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False, num_workers=NUM_WORKERS)
+        test_loader = DataLoader(
+            test_set, batch_size=batch_size, shuffle=False, num_workers=NUM_WORKERS)
         with torch.no_grad():
             for _, data in enumerate(test_loader):
                 # x = data[0].to(self.device, torch.float)
@@ -262,7 +271,8 @@ class OsicModel:
 
     def fit(self, train_set, val_set=None, epochs=1, batch_size=32, checkpoint=False, save_progress=False, random_seed=None, final_model=False):
         def routine():
-            print('epoch {:>3} [{:2.2f} s] '.format(self.epoch + 1, time.time() - start_time), end='')
+            print('epoch {:>3} [{:2.2f} s] '.format(
+                self.epoch + 1, time.time() - start_time), end='')
 
             if validate:
                 print('training [loss: {:3.7f}, norm: {:1.5f}, metric: {:1.5f}], validation [loss: {:3.7f}, norm: {:1.5f}, metric: {:1.5f}]'.format(
@@ -274,9 +284,11 @@ class OsicModel:
                     folder = './model/{}'.format(self.name)
                     make_dir(folder)
                     if final_model:
-                        self.save_checkpoint('{}/e{:02}.pickle'.format(folder, self.epoch + 1), weights_only=True)
+                        self.save_checkpoint(
+                            '{}/e{:02}.pickle'.format(folder, self.epoch + 1), weights_only=True)
                     else:
-                        self.save_checkpoint('{}/e{:02}_v{:.1f}.pickle'.format(folder, self.epoch + 1, codec_f.decode(val_norm, True)))
+                        self.save_checkpoint(
+                            '{}/e{:02}_v{:.1f}.pickle'.format(folder, self.epoch + 1, codec_f.decode(val_norm, True)))
             else:
                 print('training [loss: {:3.7f}, norm: {:1.5f}, metric: {:1.5f}]'.format(
                     loss, norm, metric
@@ -287,10 +299,11 @@ class OsicModel:
                     folder = './model/{}'.format(self.name)
                     make_dir(folder)
                     if final_model:
-                        self.save_checkpoint('{}/e{:02}.pickle'.format(folder, self.epoch + 1), weights_only=True)
+                        self.save_checkpoint(
+                            '{}/e{:02}.pickle'.format(folder, self.epoch + 1), weights_only=True)
                     else:
-                        self.save_checkpoint('{}/e{:02}_t{:.2f}.pickle'.format(folder, self.epoch + 1, codec_f.decode(norm, True)))
-
+                        self.save_checkpoint(
+                            '{}/e{:02}_t{:.2f}.pickle'.format(folder, self.epoch + 1, codec_f.decode(norm, True)))
 
         validate = True if val_set is not None else False
         if random_seed is not None:
@@ -299,11 +312,14 @@ class OsicModel:
                 torch.cuda.manual_seed_all(random_seed)
 
         if validate:
-            val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False, num_workers=NUM_WORKERS)
-            print('training on {} samples, validating on {} samples\n'.format(len(train_set), len(val_set)))
+            val_loader = DataLoader(
+                val_set, batch_size=batch_size, shuffle=False, num_workers=NUM_WORKERS)
+            print('training on {} samples, validating on {} samples\n'.format(
+                len(train_set), len(val_set)))
         else:
             print('training on {} samples\n'.format(len(train_set)))
-        train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=NUM_WORKERS)
+        train_loader = DataLoader(
+            train_set, batch_size=batch_size, shuffle=True, num_workers=NUM_WORKERS)
 
         while self.epoch < epochs:
             start_time = time.time()
@@ -326,8 +342,9 @@ def main():
     train_set = OsicDataset(train_arr, mode='train')
     val_set = OsicDataset(val_arr, mode='val')
 
-    model = OsicModel('test_04', net=NetSimple(input_dim=10, output_dim=3), learning_rate=1e-4)
-    model.fit(train_set, val_set, epochs=200, batch_size=128)
+    model = OsicModel('test_04', net=NetSimple(
+        input_dim=10, output_dim=3), learning_rate=1e-4)
+    model.fit(train_set, epochs=200, batch_size=128)
 
 
 if __name__ == '__main__':

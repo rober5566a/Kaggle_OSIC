@@ -1,4 +1,5 @@
-import os, pickle
+import os
+import pickle
 import numpy as np
 
 from utils import *
@@ -22,7 +23,8 @@ def onehot(idx, length):
 
 def normalize_info(line):
     temp = np.concatenate((
-        np.array([codec_w.encode(line[1]), codec_f.encode(line[2]), codec_p.encode(line[3]), codec_a.encode(line[4])], np.float32),
+        np.array([codec_w.encode(line[1]), codec_f.encode(line[2]),
+                  codec_p.encode(line[3]), codec_a.encode(line[4])], np.float32),
         onehot(['Male', 'Female'].index(line[5]), 2),
         onehot(['Never smoked', 'Ex-smoker', 'Currently smokes'].index(line[6]), 3)
     ), axis=0)
@@ -36,7 +38,7 @@ def process_data(csv_file, image_dir, output_file=None, train=True, limit_num=20
 
     output = []
     if train:
-        users_id = sorted(list(set([line[0] for line in content])))[:160]
+        users_id = sorted(list(set([line[0] for line in content])))
     else:
         users_id = [line[0] for line in content]
 
