@@ -4,13 +4,15 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
+autopep8 = "*"
 
 [packages]
-matplotlib = "==3.1.3"
 numpy = "*"
 opencv-python = "==3.4.2.17"
 kaggle = "*"
-pydicom = "*"
+matplotlib = "*"
+pillow = "*"
+pydicom = "==1.4.2"
 
 [requires]
 python_version = "3.6"
