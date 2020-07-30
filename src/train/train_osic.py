@@ -19,11 +19,15 @@ NUM_WORKERS = 4
 
 
 class OsicDataset(Dataset):
-    def __init__(self, arr, mode='train'):
+    def __init__(self, arr, transform, mode='train'):
         self.x = []
         self.y = []
+        self.images = [item['image'] for item in arr]
+        self.idx_to_image_id = []
+        self.transofrm = transform
+        self.mode = mode
         if mode == 'train':
-            for item in arr:
+            for k, item in enumerate(arr):
                 for i in range(len(item['info'])):
                     for j in range(len(item['info'])):
                         temp_x = np.concatenate((
@@ -33,8 +37,9 @@ class OsicDataset(Dataset):
                         temp_y = item['info'][j][1]
                         self.x.append(temp_x)
                         self.y.append(temp_y)
+                        self.idx_to_image_id.append(k)
         elif mode == 'val':
-            for item in arr:
+            for k, item in enumerate(arr):
                 for i in range(len(item['info'])):
                     for j in [-1, -2, -3]:
                         temp_x = np.concatenate((
@@ -44,9 +49,10 @@ class OsicDataset(Dataset):
                         temp_y = item['info'][j][1]
                         self.x.append(temp_x)
                         self.y.append(temp_y)
+                        self.idx_to_image_id.append(k)
         elif mode == 'test':
             self.y = None
-            for item in arr:
+            for k, item in enumerate(arr):
                 for i in range(len(item['info'])):
                     for j in range(-12, 134, 1):
                         temp_x = np.concatenate((
@@ -54,14 +60,20 @@ class OsicDataset(Dataset):
                             np.array([codec_w.encode(j)], np.float32)
                         ), axis=0)
                         self.x.append(temp_x)
+                        self.idx_to_image_id.append(k)
         else:
             raise KeyError
 
     def __getitem__(self, idx):
+        pad_image = np.zeros((20, 64, 64))
+        image = torch.stack([self.transofrm(i) for i in self.images[self.idx_to_image_id[idx]]], dim=0).squeeze()
+        # image = self.images[self.idx_to_image_id[idx]]
+        image_id = random.randint(0, len(image) - 1) if self.mode == 'train' else len(image) // 2
+        image = self.transofrm(image[image_id])
         if self.y is not None:
-            return self.x[idx], self.y[idx]
+            return self.x[idx], image, self.y[idx]
         else:
-            return self.x[idx]
+            return self.x[idx], image
 
     def __len__(self):
         return len(self.x)
@@ -158,22 +170,30 @@ class OsicModel:
             self.optimizer.zero_grad()
 
             x = data[0].to(self.device, torch.float)
-            y = data[1].to(self.device, torch.float)
+            image = data[1].to(self.device, torch.float)
+            y = data[2].to(self.device, torch.float)
 
-            y_pred = self.net(x)
+            y_pred = self.net(x, image)
+            if self.lsm_model is not None:
+                offset = self.lsm_model.forward(x).to(self.device)
+                y_pred = y_pred + offset
 
-            y = codec_f.decode(y)
+            y_true = codec_f.decode(y)
             y_pred = codec_f.decode(y_pred)
 
-            loss_01 = self.pinball_loss(y_pred, y)
-            loss_02 = self.laplace_log_likelihood(y_pred, y)
+            # loss_01 = self.pinball_loss(y_pred, y_true)
+            # loss_01 = F.mse_loss(y_pred[:, 0], y_true)
+            loss_02 = self.laplace_log_likelihood(y_pred, y_true)
 
-            batch_loss = alpha * loss_01 + (1. - alpha) * loss_02
+            # print(loss_01.item(), loss_02.item())
+
+            # batch_loss = alpha * loss_01 + (1. - alpha) * loss_02
+            batch_loss = loss_02
             batch_loss.backward()
 
             self.optimizer.step()
             loss += batch_loss.item()
-            norm += F.l1_loss(y_pred[:, 0], y).item()
+            norm += F.l1_loss(y_pred[:, 0], y_true).item()
             metric -= loss_02.item()
 
         return loss / len(loader), norm / len(loader), metric / len(loader)
@@ -186,88 +206,29 @@ class OsicModel:
             metric = 0.
             for _, data in enumerate(loader):
                 x = data[0].to(self.device, torch.float)
-                y = data[1].to(self.device, torch.float)
+                image = data[1].to(self.device, torch.float)
+                y = data[2].to(self.device, torch.float)
 
-                y_pred = self.net(x)
+                y_pred = self.net(x, image)
+                if self.lsm_model is not None:
+                    offset = self.lsm_model.forward(x).to(self.device)
+                    y_pred = y_pred + offset
 
-                y = codec_f.decode(y)
+                y_true = codec_f.decode(y)
                 y_pred = codec_f.decode(y_pred)
 
-                loss_01 = self.pinball_loss(y_pred, y)
-                loss_02 = self.laplace_log_likelihood(y_pred, y)
+                # loss_01 = self.pinball_loss(y_pred, y_true)
+                # loss_01 = F.mse_loss(y_pred[:, 0], y_true)
+                loss_02 = self.laplace_log_likelihood(y_pred, y_true)
 
-                batch_loss = alpha * loss_01 * (1. - alpha) * loss_02
+                # batch_loss = alpha * loss_01 * (1. - alpha) * loss_02
+                batch_loss = loss_02
 
                 loss += batch_loss
-                norm += F.l1_loss(y_pred[:, 0], y).item()
+                norm += F.l1_loss(y_pred[:, 0], y_true).item()
                 metric -= loss_02.item()
 
         return loss / len(loader), norm / len(loader), metric / len(loader)
-
-    # def train_on_epoch(self, loader, alpha=0.8):
-    #     self.net.train()
-    #     loss = 0.
-    #     norm = 0.
-    #     metric = 0.
-    #     for _, data in enumerate(loader):
-    #         self.optimizer.zero_grad()
-
-    #         x = data[0].to(self.device, torch.float)
-    #         y = data[1].to(self.device, torch.float)
-
-    #         y_pred = self.net(x)
-
-    #         batch_loss_01 = F.mse_loss(y_pred[:, 0], y)
-
-    #         delta = torch.abs(y_pred[:, 0] - y)
-    #         sigma = y_pred[:, 1]
-
-    #         delta = codec_f.decode(delta, scale_only=True)
-    #         sigma = codec_f.decode(sigma)
-    #         sigma = torch.clamp(sigma, 70, 5000)
-
-    #         batch_loss_02 = torch.mean(math.sqrt(2) * delta / sigma + torch.log(math.sqrt(2) * sigma))
-
-    #         batch_loss = 0.5 * batch_loss_01 + 0.5 * batch_loss_02
-    #         batch_loss.backward()
-
-    #         self.optimizer.step()
-    #         loss += batch_loss.item()
-    #         norm += F.l1_loss(y_pred[:, 0], y).item()
-    #         metric -= batch_loss_02.item()
-
-    #     return loss / len(loader), norm / len(loader), metric / len(loader)
-
-    # def val_on_epoch(self, loader, alpha=0.8):
-    #     self.net.eval()
-    #     with torch.no_grad():
-    #         loss = 0.
-    #         norm = 0.
-    #         metric = 0.
-    #         for _, data in enumerate(loader):
-    #             x = data[0].to(self.device, torch.float)
-    #             y = data[1].to(self.device, torch.float)
-
-    #             y_pred = self.net(x)
-
-    #             batch_loss_01 = F.mse_loss(y_pred[:, 0], y)
-
-    #             delta = torch.abs(y_pred[:, 0] - y)
-    #             sigma = y_pred[:, 1]
-
-    #             delta = codec_f.decode(delta, scale_only=True)
-    #             sigma = codec_f.decode(sigma)
-    #             sigma = torch.clamp(sigma, 70, 5000)
-
-    #             batch_loss_02 = torch.mean(math.sqrt(2) * delta / sigma + torch.log(math.sqrt(2) * sigma))
-
-    #             batch_loss =  0.5 * batch_loss_01 + 0.5 * batch_loss_02
-
-    #             loss += batch_loss
-    #             norm += F.l1_loss(y_pred[:, 0], y).item()
-    #             metric -= batch_loss_02
-
-    #     return loss / len(loader), norm / len(loader), metric / len(loader)
 
     def fit(self, train_set, val_set=None, epochs=1, batch_size=32, checkpoint=False, save_progress=False, random_seed=None, final_model=False):
         def routine():
@@ -342,9 +303,8 @@ def main():
     train_set = OsicDataset(train_arr, mode='train')
     val_set = OsicDataset(val_arr, mode='val')
 
-    model = OsicModel('test_04', net=NetSimple(
-        input_dim=10, output_dim=3), learning_rate=1e-4)
-    model.fit(train_set, epochs=200, batch_size=128)
+    model = OsicModel('_', net=NetIO(input_dim=10, input_channel=20, output_dim=3), learning_rate=1e-4)
+    model.fit(train_set, epochs=200, batch_size=64)
 
 
 if __name__ == '__main__':
