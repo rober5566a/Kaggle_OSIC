@@ -333,14 +333,14 @@ class OsicModel:
 
 
 def main():
-    with open('input/train.pickle', 'rb') as f:
+    with open('Data/input/train.pickle', 'rb') as f:
         train_arr = pickle.load(f)
 
-    with open('input/val.pickle', 'rb') as f:
-        val_arr = pickle.load(f)
+    # with open('input/val.pickle', 'rb') as f:
+    #     val_arr = pickle.load(f)
 
     train_set = OsicDataset(train_arr, mode='train')
-    val_set = OsicDataset(val_arr, mode='val')
+    # val_set = OsicDataset(val_arr, mode='val')
 
     model = OsicModel('test_04', net=NetSimple(
         input_dim=10, output_dim=3), learning_rate=1e-4)

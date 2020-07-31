@@ -34,6 +34,31 @@ def normalize_info(line):
     return temp
 
 
+def transform_ctdata(ct_dcm, windowWidth=-1500, windowCenter=-600, CONVERT_DCM2GRAY=True):
+    ct_slope = float(ct_dcm.RescaleSlope)
+    ct_intercept = float(ct_dcm.RescaleIntercept)
+    ct_img = ct_intercept + ct_dcm.pixel_array * ct_slope
+
+    minWindow = - float(abs(windowCenter)) + 0.5*float(abs(windowWidth))
+    new_img = (ct_img - minWindow) / float(windowWidth)
+    # print(np.average(new_img))
+
+    if np.average(new_img) > 1:  # if this img most of part are white
+        try:
+            minWindow = - float(abs(ct_dcm.WindowCenter)) + \
+                0.5*float(abs(windowWidth))
+        except TypeError:
+            minWindow = - float(abs(ct_dcm.WindowCenter[0])) + \
+                0.5*float(abs(windowWidth))
+        new_img = (ct_img - minWindow) / float(windowWidth)
+
+    new_img[new_img < 0] = 0
+    new_img[new_img > 1] = 1
+    if CONVERT_DCM2GRAY is True:
+        new_img = (new_img * 255).astype('uint8')
+    return new_img
+
+
 def normalize_imgs(imgs_arr, user_imgs_path):
     user_img_paths = get_filenames(user_imgs_path, 'dcm')
     num_img_ls = []
@@ -53,8 +78,9 @@ def normalize_imgs(imgs_arr, user_imgs_path):
 
     for i, dataset_img_path in enumerate(dataset_img_paths):
         ct_dcm = pydicom.dcmread(dataset_img_path)
+        ct_img = transform_ctdata(ct_dcm, windowWidth=-1500, windowCenter=-600)
         # print(ct_dcm.pixel_array)
-        ct_img = cv2.resize(ct_dcm.pixel_array, (256, 256)) / 65535
+        ct_img = cv2.resize(ct_img, (imgs_arr.shape[1], imgs_arr.shape[2]))
         # print(ct_img)
         imgs_arr[i] = ct_img
     return imgs_arr
