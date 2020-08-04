@@ -2,7 +2,6 @@ from utils import *
 import os
 import cv2
 import pickle
-import gdcm
 import pydicom
 import numpy as np
 from Model.find_file_name import get_filenames

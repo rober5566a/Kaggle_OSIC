@@ -8,11 +8,12 @@ autopep8 = "*"
 
 [packages]
 numpy = "*"
-opencv-python = "==3.4.2.17"
 kaggle = "*"
 matplotlib = "*"
 pillow = "*"
 pydicom = "==1.4.2"
+pandas = "*"
+opencv-python = "==3.4.10.35"
 
 [requires]
 python_version = "3.6"
