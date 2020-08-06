@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torchvision.transforms as transforms
 
 
 class Net(nn.Module):
@@ -147,5 +148,6 @@ train_transform = transforms.Compose([
 ])
 
 val_transform = transforms.Compose([
+    transforms.ToPILImage(),
     transforms.ToTensor()
 ])

@@ -131,14 +131,14 @@ def get_biggest_countour(img, isShow=False):
 
 
 def get_lung_img(img, isShow=False):
-    lung_contour = get_biggest_countour(img, isShow=True)
+    lung_contour = get_biggest_countour(img, isShow=False)
 
     # detect image has black frame or not
     if len(lung_contour) != 0 and np.average(img[0:10, 0:10]) < 50:
-        img = remove_black_frame(img, lung_contour, isShow=True)
+        img = remove_black_frame(img, lung_contour, isShow=False)
         lung_contour = get_biggest_countour(img)
 
-    lung_img = remove_img_nosie(img, lung_contour, isShow=True)
+    lung_img = remove_img_nosie(img, lung_contour, isShow=False)
     features = calc_contour_feature(lung_img, lung_contour)
     lung_img = get_crop_img_ls(lung_img, features)[0]
 

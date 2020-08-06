@@ -3,6 +3,7 @@ import os
 import sys
 import pickle
 import math
+import random
 import numpy as np
 import torch
 import torch.nn as nn
@@ -15,7 +16,7 @@ from nets import *
 from utils import *
 
 
-NUM_WORKERS = 4
+NUM_WORKERS = 8
 
 
 class OsicDataset(Dataset):
@@ -65,10 +66,11 @@ class OsicDataset(Dataset):
             raise KeyError
 
     def __getitem__(self, idx):
-        pad_image = np.zeros((20, 64, 64))
-        image = torch.stack([self.transofrm(i) for i in self.images[self.idx_to_image_id[idx]]], dim=0).squeeze()
+        image = torch.stack([self.transofrm(
+            i) for i in self.images[self.idx_to_image_id[idx]]], dim=0).squeeze()
         # image = self.images[self.idx_to_image_id[idx]]
-        image_id = random.randint(0, len(image) - 1) if self.mode == 'train' else len(image) // 2
+        image_id = random.randint(
+            0, len(image) - 1) if self.mode == 'train' else len(image) // 2
         image = self.transofrm(image[image_id])
         if self.y is not None:
             return self.x[idx], image, self.y[idx]
@@ -89,6 +91,7 @@ class OsicModel:
             'cuda:0' if torch.cuda.is_available() else 'cpu')
         print('DEVICE: {}'.format(self.device))
 
+        self.lsm_model = None
         self.net = net.to(self.device)
         self.optimizer = optim.Adam(self.net.parameters(), lr=learning_rate)
         self.scheduler = optim.lr_scheduler.StepLR(
@@ -295,16 +298,20 @@ class OsicModel:
 
 def main():
     with open('Data/input/train.pickle', 'rb') as f:
-        train_arr = pickle.load(f)
+        train_arr = pickle.load(f)  # [:20]
 
-    # with open('input/val.pickle', 'rb') as f:
-    #     val_arr = pickle.load(f)
+    print(train_arr[0]['image'].shape)
+    print(train_arr[0]['image'].dtype)
+
+    with open('Data/input/val.pickle', 'rb') as f:
+        val_arr = pickle.load(f)
 
     train_set = OsicDataset(train_arr, transform=train_transform, mode='train')
-    # val_set = OsicDataset(val_arr, transform=val_transform, mode='val')
+    val_set = OsicDataset(val_arr, transform=val_transform, mode='val')
 
-    model = OsicModel('_', net=NetIO(input_dim=10, input_channel=20, output_dim=3), learning_rate=1e-4)
-    model.fit(train_set, epochs=200, batch_size=64)
+    model = OsicModel('_', net=NetOI(
+        input_dim=10, input_channel=1, output_dim=3), learning_rate=1e-4)
+    model.fit(train_set, val_set, epochs=200, batch_size=8)
 
 
 if __name__ == '__main__':

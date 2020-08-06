@@ -6,7 +6,7 @@ import pydicom
 import numpy as np
 from Model.find_file_name import get_filenames
 from Model.BoundaryDescriptor import *
-from Model.dataset_img_process import *
+from dataset_img_process import *
 
 
 def statistic(csv_file):
@@ -86,7 +86,7 @@ def normalize_imgs(imgs_arr, user_imgs_path):
             print('pass')
             output_img = ct_img
         else:
-            lung_img = get_lung_img(ct_img, isShow=True)
+            lung_img = get_lung_img(ct_img, isShow=False)
             output_img = get_square_img(lung_img)
 
         output_img = cv2.resize(
@@ -102,7 +102,7 @@ def process_data(csv_file, image_dir, output_file=None, train=True, limit_num=20
 
     output = []
     if train:
-        users_id = sorted(list(set([line[0] for line in content])))
+        users_id = sorted(list(set([line[0] for line in content])))[160:]
     else:
         users_id = [line[0] for line in content]
 
@@ -112,7 +112,7 @@ def process_data(csv_file, image_dir, output_file=None, train=True, limit_num=20
         user_row = list(filter(lambda x: x[0] == user_id, content))
         user_imgs_path = '{}/{}'.format(image_dir, user_id)
         user_imgs_arr = np.zeros(
-            [limit_num, image_size, image_size], dtype=np.float32)
+            [limit_num, image_size, image_size], dtype='uint8')
         temp.update({
             'info': np.array([normalize_info(e) for e in user_row], np.float32),
             'image': normalize_imgs(user_imgs_arr, user_imgs_path)
@@ -130,5 +130,5 @@ def process_data(csv_file, image_dir, output_file=None, train=True, limit_num=20
 if __name__ == '__main__':
     # statistic('raw/train.csv')
     process_data('Data/raw/train.csv', 'Data/raw/train',
-                 'Data/input/train.pickle')
+                 'Data/input/val.pickle')
     # process_data('raw/test.csv', 'raw/test', 'input/test.pickle', train=False)
