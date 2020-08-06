@@ -135,3 +135,17 @@ class NetSimple(nn.Module):
     def forward(self, x):
         x = self.fc(x)
         return x
+
+
+train_transform = transforms.Compose([
+    transforms.ToPILImage(),
+    transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3),
+    transforms.RandomHorizontalFlip(),
+    transforms.RandomRotation(30),
+    transforms.ToTensor(),
+    transforms.RandomErasing()
+])
+
+val_transform = transforms.Compose([
+    transforms.ToTensor()
+])

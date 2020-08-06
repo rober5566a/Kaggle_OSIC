@@ -300,8 +300,8 @@ def main():
     # with open('input/val.pickle', 'rb') as f:
     #     val_arr = pickle.load(f)
 
-    train_set = OsicDataset(train_arr, mode='train')
-    # val_set = OsicDataset(val_arr, mode='val')
+    train_set = OsicDataset(train_arr, transform=train_transform, mode='train')
+    # val_set = OsicDataset(val_arr, transform=val_transform, mode='val')
 
     model = OsicModel('_', net=NetIO(input_dim=10, input_channel=20, output_dim=3), learning_rate=1e-4)
     model.fit(train_set, epochs=200, batch_size=64)
