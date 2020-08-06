@@ -5,6 +5,8 @@ import pickle
 import pydicom
 import numpy as np
 from Model.find_file_name import get_filenames
+from Model.BoundaryDescriptor import *
+from Model.dataset_img_process import *
 
 
 def statistic(csv_file):
@@ -79,9 +81,17 @@ def normalize_imgs(imgs_arr, user_imgs_path):
         ct_dcm = pydicom.dcmread(dataset_img_path)
         ct_img = transform_ctdata(ct_dcm, windowWidth=-1500, windowCenter=-600)
         # print(ct_dcm.pixel_array)
-        ct_img = cv2.resize(ct_img, (imgs_arr.shape[1], imgs_arr.shape[2]))
-        # print(ct_img)
-        imgs_arr[i] = ct_img
+
+        if np.average(ct_img) < 50 or np.average(ct_img) > 170:
+            print('pass')
+            output_img = ct_img
+        else:
+            lung_img = get_lung_img(ct_img, isShow=True)
+            output_img = get_square_img(lung_img)
+
+        output_img = cv2.resize(
+            output_img, (imgs_arr.shape[1], imgs_arr.shape[2]))
+        imgs_arr[i] = output_img
     return imgs_arr
 
 
@@ -107,6 +117,7 @@ def process_data(csv_file, image_dir, output_file=None, train=True, limit_num=20
             'info': np.array([normalize_info(e) for e in user_row], np.float32),
             'image': normalize_imgs(user_imgs_arr, user_imgs_path)
         })
+
         output.append(temp)
 
     if output_file is not None:
