@@ -1,9 +1,9 @@
-from utils import *
 import os
 import cv2
 import pickle
 import pydicom
 import numpy as np
+from utils import *
 from Model.find_file_name import get_filenames
 from Model.BoundaryDescriptor import *
 from dataset_img_process import *
@@ -62,18 +62,18 @@ def transform_ctdata(ct_dcm, windowWidth=-1500, windowCenter=-600, CONVERT_DCM2G
 
 def normalize_imgs(imgs_arr, user_imgs_path):
     user_img_paths = get_filenames(user_imgs_path, 'dcm')
-    num_img_ls = []
+    num_img_list = []
     for user_img_path in user_img_paths:
         num_img = int(user_img_path.split('/')[-1][:-4])
-        num_img_ls.append(num_img)
-    num_img_ls.sort()
-    # print(num_img_ls)
+        num_img_list.append(num_img)
+    num_img_list.sort()
+    # print(num_img_list)
 
-    dist = len(num_img_ls) / imgs_arr.shape[0]
+    dist = len(num_img_list) / imgs_arr.shape[0]
     dataset_img_paths = []
     for i in range(imgs_arr.shape[0]):
         num_img_path = '{}/{}.dcm'.format(user_imgs_path,
-                                          num_img_ls[int(i * dist)])
+                                          num_img_list[int(i * dist)])
         dataset_img_paths.append(num_img_path)
     # print(dataset_img_paths)
 

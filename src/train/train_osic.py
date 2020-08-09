@@ -245,7 +245,7 @@ class OsicModel:
                 if save_progress:
                     self.losses.append((loss, norm, val_loss, val_norm))
                 if checkpoint and (self.epoch + 1) % checkpoint == 0:
-                    folder = './model/{}'.format(self.name)
+                    folder = './output/model/{}'.format(self.name)
                     make_dir(folder)
                     if final_model:
                         self.save_checkpoint(
@@ -311,7 +311,7 @@ def main():
 
     model = OsicModel('_', net=NetOI(
         input_dim=10, input_channel=1, output_dim=3), learning_rate=1e-4)
-    model.fit(train_set, val_set, epochs=200, batch_size=8)
+    model.fit(train_set, val_set, epochs=5, checkpoint=5, batch_size=8)
 
 
 if __name__ == '__main__':
