@@ -12,6 +12,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
+import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 
 
@@ -20,10 +21,10 @@ import matplotlib.pyplot as plt
 # SUBMIT_CSV = 'submission.csv'
 # MODEL_FILE = ''
 
-TEST_CSV = 'Data/raw/test.csv'
-TEST_DIR = 'Data/raw/test'
-SUBMIT_CSV = 'output/notebook.csv'
-MODEL_FILE = 'output/model/test_01/e05_v117078.5.pickle'
+TEST_CSV = '../osic/raw/test.csv'
+TEST_DIR = '../osic/raw/test'
+SUBMIT_CSV = 'Data/output/notebook.csv'
+MODEL_FILE = 'Data/model/_/e01_v200078.0.pickle'
 
 
 # utils.py
@@ -382,7 +383,7 @@ def get_contours_binary(img, THRESH_VALUE=170, whiteGround=True):
     # if your python-cv version is lower than 4.0 the cv2.findContours will return 3 variable,
     # upper 4.0 : contours, hierarchy = cv2.findContours(XXX)
     # lower 4.0 : _, contours, hierarchy = cv2.findContours(XXX)
-    _, contours, hierarchy = cv2.findContours(
+    contours, hierarchy = cv2.findContours(
         thresh_white, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
     # cv2.imshow('a', thresh_white)
@@ -542,6 +543,28 @@ class NetOI(nn.Module):
         return y
 
 
+class NetSimple(nn.Module):
+    def __init__(self, input_dim=10, output_dim=1):
+        super(NetSimple, self).__init__()
+
+        self.fc = nn.Sequential(
+            nn.Linear(input_dim, 256),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+
+            nn.Linear(128, output_dim)
+        )
+
+    def forward(self, x):
+        x = self.fc(x)
+        return x
+
+
+
 # train_transform = transforms.Compose([
 #     transforms.ToPILImage(),
 #     transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3),
@@ -551,10 +574,10 @@ class NetOI(nn.Module):
 #     transforms.RandomErasing()
 # ])
 
-# val_transform = transforms.Compose([
-#     transforms.ToPILImage(),
-#     transforms.ToTensor()
-# ])
+val_transform = transforms.Compose([
+    transforms.ToPILImage(),
+    transforms.ToTensor()
+])
 
 
 # train_osic.py
@@ -562,11 +585,15 @@ NUM_WORKERS = 4
 
 
 class OsicDataset(Dataset):
-    def __init__(self, arr, train=True):
+    def __init__(self, arr, transform, mode='train'):
         self.x = []
         self.y = []
-        if train:
-            for item in arr:
+        self.images = [item['image'] for item in arr]
+        self.idx_to_image_id = []
+        self.transofrm = transform
+        self.mode = mode
+        if mode == 'train':
+            for k, item in enumerate(arr):
                 for i in range(len(item['info'])):
                     for j in range(len(item['info'])):
                         temp_x = np.concatenate((
@@ -576,9 +603,22 @@ class OsicDataset(Dataset):
                         temp_y = item['info'][j][1]
                         self.x.append(temp_x)
                         self.y.append(temp_y)
-        else:
+                        self.idx_to_image_id.append(k)
+        elif mode == 'val':
+            for k, item in enumerate(arr):
+                for i in range(len(item['info'])):
+                    for j in [-1, -2, -3]:
+                        temp_x = np.concatenate((
+                            item['info'][i],
+                            item['info'][j][0:1]
+                        ), axis=0)
+                        temp_y = item['info'][j][1]
+                        self.x.append(temp_x)
+                        self.y.append(temp_y)
+                        self.idx_to_image_id.append(k)
+        elif mode == 'test':
             self.y = None
-            for item in arr:
+            for k, item in enumerate(arr):
                 for i in range(len(item['info'])):
                     for j in range(-12, 134, 1):
                         temp_x = np.concatenate((
@@ -586,12 +626,21 @@ class OsicDataset(Dataset):
                             np.array([codec_w.encode(j)], np.float32)
                         ), axis=0)
                         self.x.append(temp_x)
+                        self.idx_to_image_id.append(k)
+        else:
+            raise KeyError
 
     def __getitem__(self, idx):
+        image = torch.stack([self.transofrm(
+            i) for i in self.images[self.idx_to_image_id[idx]]], dim=0).squeeze()
+        # image = self.images[self.idx_to_image_id[idx]]
+        image_id = random.randint(
+            0, len(image) - 1) if self.mode == 'train' else len(image) // 2
+        image = self.transofrm(image[image_id])
         if self.y is not None:
-            return self.x[idx], self.y[idx]
+            return self.x[idx], image, self.y[idx]
         else:
-            return self.x[idx]
+            return self.x[idx], image
 
     def __len__(self):
         return len(self.x)
@@ -628,10 +677,10 @@ class OsicModel:
             test_set, batch_size=batch_size, shuffle=False, num_workers=NUM_WORKERS)
         with torch.no_grad():
             for _, data in enumerate(test_loader):
-                # x = data[0].to(self.device, torch.float)
-                x = data.to(self.device, torch.float)
+                x = data[0].to(self.device, torch.float)
+                image = data[1].to(self.device)
 
-                y_pred = self.net(x)
+                y_pred = self.net(x, image)
                 y_pred = y_pred.detach().squeeze().cpu().numpy()
                 output.extend(y_pred)
 
@@ -657,7 +706,7 @@ def predict(test_csv, model_file, output_file):
         content = [e.split(',') for e in content]
 
     test_arr = process_data(TEST_CSV, TEST_DIR, train=False)
-    test_set = OsicDataset(test_arr, train=False)
+    test_set = OsicDataset(test_arr, val_transform, mode='test')
 
     model = OsicModel(net=NetOI(input_dim=10, input_channel=1, output_dim=3))
     model.load_checkpoint(model_file)
@@ -666,19 +715,11 @@ def predict(test_csv, model_file, output_file):
 
     y_pred = model.predict(test_set, batch_size=16)
     y = codec_f.decode(y_pred[:, 0])
-    c = codec_f.decode(y_pred[:, 1])
+    c = codec_f.decode(y_pred[:, 2] - y_pred[:, 1], scale_only=True)
     # c = np.ones((len(content) * 146), np.int16) * 70
 
     write_csv(patients_id, y, c, output_file)
 
 
 if __name__ == '__main__':
-    # test_transform = transforms.Compose([
-    # transforms.ToPILImage(),
-    # transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3),
-    # transforms.RandomHorizontalFlip(),
-    # transforms.RandomRotation(30),
-    # transforms.ToTensor(),
-    # transforms.RandomErasing()
-    # ])
     predict(TEST_CSV, MODEL_FILE, SUBMIT_CSV)

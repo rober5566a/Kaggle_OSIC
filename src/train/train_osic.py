@@ -131,10 +131,10 @@ class OsicModel:
             test_set, batch_size=batch_size, shuffle=False, num_workers=NUM_WORKERS)
         with torch.no_grad():
             for _, data in enumerate(test_loader):
-                # x = data[0].to(self.device, torch.float)
-                x = data.to(self.device, torch.float)
+                x = data[0].to(self.device, torch.float)
+                image = data[1].to(self.device)
 
-                y_pred = self.net(x)
+                y_pred = self.net(x, image)
                 y_pred = y_pred.detach().squeeze().cpu().numpy()
                 output.extend(y_pred)
 
@@ -245,7 +245,7 @@ class OsicModel:
                 if save_progress:
                     self.losses.append((loss, norm, val_loss, val_norm))
                 if checkpoint and (self.epoch + 1) % checkpoint == 0:
-                    folder = './output/model/{}'.format(self.name)
+                    folder = 'Data/model/{}'.format(self.name)
                     make_dir(folder)
                     if final_model:
                         self.save_checkpoint(
@@ -260,7 +260,7 @@ class OsicModel:
                 if save_progress:
                     self.losses.append((loss, norm))
                 if checkpoint and (self.epoch + 1) % checkpoint == 0:
-                    folder = './model/{}'.format(self.name)
+                    folder = 'Data/model/{}'.format(self.name)
                     make_dir(folder)
                     if final_model:
                         self.save_checkpoint(
@@ -311,7 +311,7 @@ def main():
 
     model = OsicModel('_', net=NetOI(
         input_dim=10, input_channel=1, output_dim=3), learning_rate=1e-4)
-    model.fit(train_set, val_set, epochs=5, checkpoint=5, batch_size=8)
+    model.fit(train_set, val_set, epochs=1, checkpoint=1, batch_size=8)
 
 
 if __name__ == '__main__':
