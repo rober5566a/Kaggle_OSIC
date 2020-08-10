@@ -82,12 +82,15 @@ def normalize_imgs(imgs_arr, user_imgs_path):
         ct_img = transform_ctdata(ct_dcm, windowWidth=-1500, windowCenter=-600)
         # print(ct_dcm.pixel_array)
 
-        if np.average(ct_img) < 50 or np.average(ct_img) > 170:
+        j = i
+        if np.average(ct_img) < 25 or np.average(ct_img) > 200 or (np.average(ct_img) == ct_img[:, :]).all():
             print('pass')
-            output_img = ct_img
-        else:
-            lung_img = get_lung_img(ct_img, isShow=False)
-            output_img = get_square_img(lung_img)
+            j += 1
+            ct_dcm = pydicom.dcmread(dataset_img_paths[j])
+            ct_img = transform_ctdata(ct_dcm, -1500, -600)
+
+        lung_img = get_lung_img(ct_img.copy(), isShow=False)
+        output_img = get_square_img(lung_img)
 
         output_img = cv2.resize(
             output_img, (imgs_arr.shape[1], imgs_arr.shape[2]))
@@ -102,7 +105,7 @@ def process_data(csv_file, image_dir, output_file=None, train=True, limit_num=20
 
     output = []
     if train:
-        users_id = sorted(list(set([line[0] for line in content])))[160:]
+        users_id = sorted(list(set([line[0] for line in content])))[:160]
     else:
         users_id = [line[0] for line in content]
 
@@ -130,5 +133,5 @@ def process_data(csv_file, image_dir, output_file=None, train=True, limit_num=20
 if __name__ == '__main__':
     # statistic('raw/train.csv')
     process_data('Data/raw/train.csv', 'Data/raw/train',
-                 'Data/input/val.pickle')
+                 'Data/input/train.pickle')
     # process_data('raw/test.csv', 'raw/test', 'input/test.pickle', train=False)

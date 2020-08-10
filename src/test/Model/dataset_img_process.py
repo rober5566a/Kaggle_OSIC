@@ -32,18 +32,18 @@ def transform_ctdata(ct_dcm, windowWidth, windowCenter, CONVERT_DCM2GRAY=True):
 
 def get_dataset_paths(usr_imgs_path, NUM_DIVIDED=20):
     usr_img_paths = get_filenames(usr_imgs_path, 'dcm')
-    num_img_ls = []
+    num_img_list = []
     for usr_img_path in usr_img_paths:
         num_img = int(usr_img_path.split('/')[-1][:-4])
-        num_img_ls.append(num_img)
-    num_img_ls.sort()
-    # print(num_img_ls)
+        num_img_list.append(num_img)
+    num_img_list.sort()
+    # print(num_img_list)
 
-    dist = len(num_img_ls) / NUM_DIVIDED
+    dist = len(num_img_list) / NUM_DIVIDED
     dataset_img_paths = []
     for i in range(NUM_DIVIDED):
         num_img_path = '{}/{}.dcm'.format(usr_imgs_path,
-                                          num_img_ls[int(i * dist)])
+                                          num_img_list[int(i * dist)])
         dataset_img_paths.append(num_img_path)
 
     return dataset_img_paths
@@ -86,7 +86,7 @@ def remove_black_frame(img, contour, isShow=False):
         h = (y - (img_center[0])) * 2 - 2
         feature[0][3] = (2*img_center[1] - x, 2*img_center[0] - y, w, h)
 
-    img = get_crop_img_ls(
+    img = get_crop_img_list(
         img, feature, extra_W=-1, extra_H=-1, isShow=False)[0]
     new_img = np.ones(
         (img.shape[0]+2, img.shape[1]+2), dtype='uint8') * 255
@@ -103,16 +103,16 @@ def remove_black_frame(img, contour, isShow=False):
 def get_biggest_countour(img, isShow=False):
     contours = get_contours_binary(img, THRESH_VALUE=100, whiteGround=False)
     new_contours = []
-    contour_area_ls = []
+    contour_area_list = []
     for contour in contours:
         contour_area = cv2.contourArea(contour)
-        if contour_area > (img.size * 0.05) and contour_area < (img.size * 0.9) and contour.size > 8:
-            contour_area_ls.append(contour_area)
+        if contour_area > (img.size * 0.05) and contour_area < (img.size * 0.95) and contour.size > 8:
+            contour_area_list.append(contour_area)
             new_contours.append(contour)
 
-    if len(contour_area_ls) != 0:
+    if len(contour_area_list) != 0:
         biggest_contour = [
-            new_contours[contour_area_ls.index(max(contour_area_ls))]]
+            new_contours[contour_area_list.index(max(contour_area_list))]]
     else:
         # need to fix : no contour fit the constrain
         biggest_contour = []
@@ -140,7 +140,7 @@ def get_lung_img(img, isShow=False):
 
     lung_img = remove_img_nosie(img, lung_contour, isShow=True)
     features = calc_contour_feature(lung_img, lung_contour)
-    lung_img = get_crop_img_ls(lung_img, features)[0]
+    lung_img = get_crop_img_list(lung_img, features)[0]
 
     if isShow:
         cv2.imshow('lung_img', lung_img)

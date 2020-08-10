@@ -21,10 +21,10 @@ import matplotlib.pyplot as plt
 # SUBMIT_CSV = 'submission.csv'
 # MODEL_FILE = ''
 
-TEST_CSV = '../osic/raw/test.csv'
-TEST_DIR = '../osic/raw/test'
-SUBMIT_CSV = 'Data/output/notebook.csv'
-MODEL_FILE = 'Data/model/_/e01_v200078.0.pickle'
+TEST_CSV = 'Data/raw/test.csv'
+TEST_DIR = 'Data/raw/test'
+SUBMIT_CSV = 'output/notebook.csv'
+MODEL_FILE = 'output/model/test_01/e05_v117078.5.pickle'
 
 
 # utils.py
@@ -117,18 +117,18 @@ def get_filenames(path, file_extension, isImported=False):
 # dataset_img_process.py
 def get_dataset_paths(usr_imgs_path, NUM_DIVIDED=20):
     usr_img_paths = get_filenames(usr_imgs_path, 'dcm')
-    num_img_ls = []
+    num_img_list = []
     for usr_img_path in usr_img_paths:
         num_img = int(usr_img_path.split('/')[-1][:-4])
-        num_img_ls.append(num_img)
-    num_img_ls.sort()
-    # print(num_img_ls)
+        num_img_list.append(num_img)
+    num_img_list.sort()
+    # print(num_img_list)
 
-    dist = len(num_img_ls) / NUM_DIVIDED
+    dist = len(num_img_list) / NUM_DIVIDED
     dataset_img_paths = []
     for i in range(NUM_DIVIDED):
         num_img_path = '{}/{}.dcm'.format(usr_imgs_path,
-                                          num_img_ls[int(i * dist)])
+                                          num_img_list[int(i * dist)])
         dataset_img_paths.append(num_img_path)
 
     return dataset_img_paths
@@ -171,7 +171,7 @@ def remove_black_frame(img, contour, isShow=False):
         h = (y - (img_center[0])) * 2 - 2
         feature[0][3] = (2*img_center[1] - x, 2*img_center[0] - y, w, h)
 
-    img = get_crop_img_ls(
+    img = get_crop_img_list(
         img, feature, extra_W=-1, extra_H=-1, isShow=False)[0]
     new_img = np.ones(
         (img.shape[0]+2, img.shape[1]+2), dtype='uint8') * 255
@@ -188,16 +188,16 @@ def remove_black_frame(img, contour, isShow=False):
 def get_biggest_countour(img, isShow=False):
     contours = get_contours_binary(img, THRESH_VALUE=100, whiteGround=False)
     new_contours = []
-    contour_area_ls = []
+    contour_area_list = []
     for contour in contours:
         contour_area = cv2.contourArea(contour)
-        if contour_area > (img.size * 0.05) and contour_area < (img.size * 0.9) and contour.size > 8:
-            contour_area_ls.append(contour_area)
+        if contour_area > (img.size * 0.05) and contour_area < (img.size * 0.95) and contour.size > 8:
+            contour_area_list.append(contour_area)
             new_contours.append(contour)
 
-    if len(contour_area_ls) != 0:
+    if len(contour_area_list) != 0:
         biggest_contour = [
-            new_contours[contour_area_ls.index(max(contour_area_ls))]]
+            new_contours[contour_area_list.index(max(contour_area_list))]]
     else:
         # need to fix : no contour fit the constrain
         biggest_contour = []
@@ -225,7 +225,7 @@ def get_lung_img(img, isShow=False):
 
     lung_img = remove_img_nosie(img, lung_contour, isShow=False)
     features = calc_contour_feature(lung_img, lung_contour)
-    lung_img = get_crop_img_ls(lung_img, features)[0]
+    lung_img = get_crop_img_list(lung_img, features)[0]
 
     if isShow:
         cv2.imshow('lung_img', lung_img)
@@ -250,6 +250,16 @@ def get_square_img(img):
 
 
 # data_process.py
+def statistic(csv_file):
+    with open(csv_file) as f:
+        content = f.read().splitlines()[1:]
+        content = [e.split(',') for e in content]
+
+    for tag, idx in [('WEEK', 1), ('FVC', 2), ('PERCENT', 3), ('AGE', 4)]:
+        data = [float(e[idx]) for e in content]
+        print('{} = ({}, {})'.format(tag, np.mean(data), np.std(data)))
+
+
 def onehot(idx, length):
     temp = np.zeros((length), np.float32)
     temp[idx] = 1
@@ -293,18 +303,18 @@ def transform_ctdata(ct_dcm, windowWidth=-1500, windowCenter=-600, CONVERT_DCM2G
 
 def normalize_imgs(imgs_arr, user_imgs_path):
     user_img_paths = get_filenames(user_imgs_path, 'dcm')
-    num_img_ls = []
+    num_img_list = []
     for user_img_path in user_img_paths:
         num_img = int(user_img_path.split('/')[-1][:-4])
-        num_img_ls.append(num_img)
-    num_img_ls.sort()
-    # print(num_img_ls)
+        num_img_list.append(num_img)
+    num_img_list.sort()
+    # print(num_img_list)
 
-    dist = len(num_img_ls) / imgs_arr.shape[0]
+    dist = len(num_img_list) / imgs_arr.shape[0]
     dataset_img_paths = []
     for i in range(imgs_arr.shape[0]):
         num_img_path = '{}/{}.dcm'.format(user_imgs_path,
-                                          num_img_ls[int(i * dist)])
+                                          num_img_list[int(i * dist)])
         dataset_img_paths.append(num_img_path)
     # print(dataset_img_paths)
 
@@ -313,12 +323,15 @@ def normalize_imgs(imgs_arr, user_imgs_path):
         ct_img = transform_ctdata(ct_dcm, windowWidth=-1500, windowCenter=-600)
         # print(ct_dcm.pixel_array)
 
-        if np.average(ct_img) < 50 or np.average(ct_img) > 170:
+        j = i
+        if np.average(ct_img) < 25 or np.average(ct_img) > 200 or (np.average(ct_img) == ct_img[:, :]).all():
             print('pass')
-            output_img = ct_img
-        else:
-            lung_img = get_lung_img(ct_img, isShow=False)
-            output_img = get_square_img(lung_img)
+            j += 1
+            ct_dcm = pydicom.dcmread(dataset_img_paths[j])
+            ct_img = transform_ctdata(ct_dcm, -1500, -600)
+
+        lung_img = get_lung_img(ct_img.copy(), isShow=False)
+        output_img = get_square_img(lung_img)
 
         output_img = cv2.resize(
             output_img, (imgs_arr.shape[1], imgs_arr.shape[2]))
@@ -333,7 +346,7 @@ def process_data(csv_file, image_dir, output_file=None, train=True, limit_num=20
 
     output = []
     if train:
-        users_id = sorted(list(set([line[0] for line in content])))[160:]
+        users_id = sorted(list(set([line[0] for line in content])))[:160]
     else:
         users_id = [line[0] for line in content]
 
@@ -357,9 +370,8 @@ def process_data(csv_file, image_dir, output_file=None, train=True, limit_num=20
     else:
         return output
 
+
 # Model/BoundaryDescriptor.py
-
-
 def get_threshold_mask(imgray, THRESH_VALUE=170):
     ret, thresh = cv2.threshold(
         imgray, THRESH_VALUE, 255, cv2.THRESH_BINARY)  # setting threshold
@@ -367,7 +379,7 @@ def get_threshold_mask(imgray, THRESH_VALUE=170):
     return thresh
 
 
-def get_contours_binary(img, THRESH_VALUE=170, whiteGround=True):
+def get_contours_binary(img, THRESH_VALUE=170, whiteGround=True, morphologyActive=False):
     if len(img.shape) > 2:
         imgray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     else:
@@ -380,10 +392,16 @@ def get_contours_binary(img, THRESH_VALUE=170, whiteGround=True):
     else:
         thresh_white = 255 - thresh
 
+    if morphologyActive is True:
+        thresh_white = cv2.morphologyEx(
+            thresh_white, cv2.MORPH_OPEN, np.ones((3, 3), dtype='uint8'))
+        thresh_white = cv2.morphologyEx(
+            thresh_white, cv2.MORPH_CLOSE, np.ones((3, 3), dtype='uint8'), iterations=1)
+
     # if your python-cv version is lower than 4.0 the cv2.findContours will return 3 variable,
     # upper 4.0 : contours, hierarchy = cv2.findContours(XXX)
     # lower 4.0 : _, contours, hierarchy = cv2.findContours(XXX)
-    contours, hierarchy = cv2.findContours(
+    _, contours, hierarchy = cv2.findContours(
         thresh_white, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
     # cv2.imshow('a', thresh_white)
@@ -417,8 +435,8 @@ def calc_contour_feature(img, contours):
     return feature_list
 
 
-def get_crop_img_ls(img, feature_list, extra_W=0, extra_H=0, isShow=False):
-    crop_img_ls = []
+def get_crop_img_list(img, feature_list, extra_W=0, extra_H=0, isShow=False):
+    crop_img_list = []
     for f in feature_list:
         (x, y, w, h) = f[3]
         x -= extra_W
@@ -438,15 +456,15 @@ def get_crop_img_ls(img, feature_list, extra_W=0, extra_H=0, isShow=False):
             h = img.shape[0] - y
 
         crop_img = img[y: y + h, x: x + w]
-        crop_img_ls.append(crop_img)
+        crop_img_list.append(crop_img)
 
     if isShow:
-        for crop_img in crop_img_ls:
+        for crop_img in crop_img_list:
             cv2.imshow("crop_img_bbox", crop_img)
             cv2.waitKey(0)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 pass
-    return crop_img_ls
+    return crop_img_list
 
 
 # nets.py
@@ -564,7 +582,6 @@ class NetSimple(nn.Module):
         return x
 
 
-
 # train_transform = transforms.Compose([
 #     transforms.ToPILImage(),
 #     transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.3),
@@ -573,7 +590,6 @@ class NetSimple(nn.Module):
 #     transforms.ToTensor(),
 #     transforms.RandomErasing()
 # ])
-
 val_transform = transforms.Compose([
     transforms.ToPILImage(),
     transforms.ToTensor()

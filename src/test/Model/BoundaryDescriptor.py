@@ -17,7 +17,7 @@ def get_threshold_mask(imgray, THRESH_VALUE=170):
     return thresh
 
 
-def get_contours_binary(img, THRESH_VALUE=170, whiteGround=True):
+def get_contours_binary(img, THRESH_VALUE=170, whiteGround=True, morphologyActive=False):
     if len(img.shape) > 2:
         imgray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     else:
@@ -29,6 +29,12 @@ def get_contours_binary(img, THRESH_VALUE=170, whiteGround=True):
         thresh_white = thresh
     else:
         thresh_white = 255 - thresh
+
+    if morphologyActive is True:
+        thresh_white = cv2.morphologyEx(
+            thresh_white, cv2.MORPH_OPEN, np.ones((3, 3), dtype='uint8'))
+        thresh_white = cv2.morphologyEx(
+            thresh_white, cv2.MORPH_CLOSE, np.ones((3, 3), dtype='uint8'), iterations=1)
 
     # if your python-cv version is lower than 4.0 the cv2.findContours will return 3 variable,
     # upper 4.0 : contours, hierarchy = cv2.findContours(XXX)

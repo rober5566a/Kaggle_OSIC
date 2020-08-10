@@ -41,10 +41,13 @@ def main():
     file_extension = "dcm"
     df = pd.read_csv("doc/train.csv")
     usrs_id = list(set(df.iloc[:, 0]))
-    problem_usrs_id = ["ID00419637202311204720264", "ID00105637202208831864134",
-                       "ID00099637202206203080121", "ID00094637202205333947361"]
+    problem_usrs_id = ['ID00026637202179561894768',
+                       'ID00128637202219474716089', 'ID00298637202280361773446']
+    # problem_usrs_id = ["ID00419637202311204720264", "ID00105637202208831864134",
+    #                    "ID00099637202206203080121", "ID00094637202205333947361"]
     # ID00086637202203494931510 ID00082637202201836229724 ID00122637202216437668965 ID00283637202278714365037
     # ID00094637202205333947361/3
+    # ID00026637202179561894768
 
     # usrs_id = problem_usrs_id
     # for problem_usr_id in problem_usrs_id:
@@ -53,10 +56,10 @@ def main():
     filenames = []
     for usr_id in usrs_id:
         usr_imgs_path = ('{}/{}'.format(path, usr_id))
-        dataset_paths = get_dataset_paths(usr_imgs_path, NUM_DIVIDED=10)
+        dataset_paths = get_dataset_paths(usr_imgs_path, NUM_DIVIDED=30)
         filenames.extend(dataset_paths)
 
-    # filenames = ['Data/raw/train/ID00094637202205333947361/3.dcm']
+    # filenames = ['Data/raw/train/ID00105637202208831864134/1.dcm']
     # Data/raw/train/ID00094637202205333947361/3.dcm
     # Data/raw/train/ID00419637202311204720264/18.dcm
     # Data/raw/train/ID00419637202311204720264/20.dcm
@@ -69,29 +72,32 @@ def main():
 
     try:
         global filename
-        for filename in filenames:
+        for i, filename in enumerate(filenames):
 
             ct_dcm = pydicom.dcmread(filename)
 
             ct_img = transform_ctdata(ct_dcm, -1500, -600)
             cv2.imshow("0", ct_img)
 
-            if np.average(ct_img) < 50 or np.average(ct_img) > 170:
+            if np.average(ct_img) < 25 or np.average(ct_img) > 200 or (np.average(ct_img) == ct_img[:, :]).all():
                 print('pass')
+                i += 1
+                ct_dcm = pydicom.dcmread(filenames[i])
+                ct_img = transform_ctdata(ct_dcm, -1500, -600)
+                cv2.imshow("0", ct_img)
+                # output_img = ct_img
+                # continue
+            lung_img = get_lung_img(ct_img.copy(), isShow=True)
+            output_img = get_square_img(lung_img)
+            cv2.imshow("1", output_img)
+            # cv2.waitKey(0)
+            # img_detect = cv2.cvtColor(img_lung, cv2.COLOR_BGR2GRAY)
+            if np.average(ct_img[:, :]) == np.average(output_img[:, :]):
+                print("background is black:", filename)
+                cv2.waitKey(0)
+
+            if cv2.waitKey(1) & 0xFF == ord('q'):
                 continue
-            else:
-
-                lung_img = get_lung_img(ct_img, isShow=True)
-                output_img = get_square_img(lung_img)
-                cv2.imshow("1", output_img)
-                # cv2.waitKey(0)
-                # img_detect = cv2.cvtColor(img_lung, cv2.COLOR_BGR2GRAY)
-                if ct_img[0, 0] < 50:
-                    print("background is black:", filename)
-                    cv2.waitKey(0)
-
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    continue
     except KeyboardInterrupt:
         print(filename)
         cv2.imwrite('1.png', lung_img)

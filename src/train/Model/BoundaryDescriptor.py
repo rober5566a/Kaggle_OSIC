@@ -17,7 +17,7 @@ def get_threshold_mask(imgray, THRESH_VALUE=170):
     return thresh
 
 
-def get_contours_binary(img, THRESH_VALUE=170, whiteGround=True):
+def get_contours_binary(img, THRESH_VALUE=170, whiteGround=True, morphologyActive=False):
     if len(img.shape) > 2:
         imgray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     else:
@@ -29,6 +29,12 @@ def get_contours_binary(img, THRESH_VALUE=170, whiteGround=True):
         thresh_white = thresh
     else:
         thresh_white = 255 - thresh
+
+    if morphologyActive is True:
+        thresh_white = cv2.morphologyEx(
+            thresh_white, cv2.MORPH_OPEN, np.ones((3, 3), dtype='uint8'))
+        thresh_white = cv2.morphologyEx(
+            thresh_white, cv2.MORPH_CLOSE, np.ones((3, 3), dtype='uint8'), iterations=1)
 
     # if your python-cv version is lower than 4.0 the cv2.findContours will return 3 variable,
     # upper 4.0 : contours, hierarchy = cv2.findContours(XXX)
@@ -176,7 +182,7 @@ def draw_minSCircle(img, feature_list, color=(0, 255, 0), width=2, isShow=True):
 #             img_center = cv2.circle(img, (cX, cY), 3, (20, 255, 0), -1)
 #             # cv2.putText(img, "centroid", (cX - 25, cY - 25),cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 #             cv2.imshow("img_center", img_center)
-    # cv2.waitKey(0)
+    cv2.waitKey(0)
 
 #     return (cX, cY)
 
@@ -216,10 +222,10 @@ def get_signature_info(contours, center, isShow=False):
 
         center_dist_infos.update({theta: center_dist})
 
-    center_dist_infos_list = sorted(
+    center_dist_infos_ls = sorted(
         center_dist_infos.items(), key=lambda x: x[0])
     center_dist_infos = {}
-    for item in center_dist_infos_list:
+    for item in center_dist_infos_ls:
         center_dist_infos.update({item[0]: item[1]})
 
     if isShow is True:

@@ -311,7 +311,7 @@ def main():
 
     model = OsicModel('_', net=NetOI(
         input_dim=10, input_channel=1, output_dim=3), learning_rate=1e-4)
-    model.fit(train_set, val_set, epochs=1, checkpoint=1, batch_size=8)
+    model.fit(train_set, val_set, epochs=120, checkpoint=20, batch_size=8)
 
 
 if __name__ == '__main__':

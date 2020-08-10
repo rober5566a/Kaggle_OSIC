@@ -81,7 +81,7 @@ def get_biggest_countour(img, isShow=False):
     contour_area_list = []
     for contour in contours:
         contour_area = cv2.contourArea(contour)
-        if contour_area > (img.size * 0.05) and contour_area < (img.size * 0.9) and contour.size > 8:
+        if contour_area > (img.size * 0.05) and contour_area < (img.size * 0.95) and contour.size > 8:
             contour_area_list.append(contour_area)
             new_contours.append(contour)
 
