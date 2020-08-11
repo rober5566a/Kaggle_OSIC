@@ -49,7 +49,7 @@ def get_dataset_paths(usr_imgs_path, NUM_DIVIDED=20):
     return dataset_img_paths
 
 
-def remove_img_nosie(img, contours, isShow=False):
+def remove_img_nosie(img, contours, meanBackGround=False, isShow=False):
     '''
         Only save contours part, else place become back.
         ===
@@ -57,7 +57,11 @@ def remove_img_nosie(img, contours, isShow=False):
         use cv2.drawContours() make contours part become 255 (white),
         final, use cv2.gitwise_and() to remove noise for img
     '''
-    crop_img = np.zeros(img.shape, dtype="uint8")
+    if meanBackGround is False:
+        crop_img = np.zeros(img.shape, dtype="uint8")
+    else:
+        crop_img = np.ones(img.shape, dtype="uint8") * \
+            int(np.average(img[:, :]))
     crop_img = cv2.drawContours(
         crop_img.copy(), contours, -1, 255, thickness=-1)
     crop_img = cv2.bitwise_and(img, crop_img)
@@ -100,8 +104,8 @@ def remove_black_frame(img, contour, isShow=False):
     return new_img
 
 
-def get_biggest_countour(img, isShow=False):
-    contours = get_contours_binary(img, THRESH_VALUE=100, whiteGround=False)
+def get_biggest_countour(img, THRESH_VALUE=100, isShow=False):
+    contours = get_contours_binary(img, THRESH_VALUE, whiteGround=False)
     new_contours = []
     contour_area_list = []
     for contour in contours:
@@ -154,8 +158,7 @@ def get_lung_img(img, isShow=False):
 def get_square_img(img):
     square_size = max(img.shape[:])
     square_center = int(square_size / 2)
-    output_img = np.zeros(
-        (square_size, square_size), dtype='uint8')
+    output_img = np.zeros((square_size, square_size), dtype='uint8')
     start_point_x = square_center - int(img.shape[0]/2)
     start_point_y = square_center - int(img.shape[1]/2)
     output_img[start_point_x: start_point_x + img.shape[0],

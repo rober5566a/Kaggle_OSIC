@@ -117,6 +117,62 @@ class NetOI(nn.Module):
         return y
 
 
+class NetOI_shun(nn.Module):
+    def __init__(self, input_dim=10, input_channel=20, output_dim=1):
+        super(NetOI_shun, self).__init__()
+
+        self.cnn = nn.Sequential(
+            nn.Conv2d(input_channel, 64, 3, stride=1, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+
+            nn.Conv2d(64, 256, 3, stride=1, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2, 0),
+
+            nn.Conv2d(256, 256, 3, stride=1, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2, 0),
+
+            nn.Conv2d(256, 256, 3, stride=1, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2, 0),
+
+            nn.Conv2d(256, 256, 3, stride=1, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2, 0),
+
+            nn.Conv2d(256, 128, 3, stride=1, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2, 0),
+
+            nn.AdaptiveAvgPool2d((2, 2))
+        )
+
+        self.fc = nn.Sequential(
+            nn.Linear(522, 512),
+            nn.LeakyReLU(),
+
+            nn.Linear(512, 512),
+            nn.LeakyReLU(),
+
+            nn.Linear(512, output_dim)
+        )
+
+    def forward(self, x, image):
+        y = self.cnn(image).view(image.size(0), -1)
+        # y = torch.cat([y, x[:, -1].unsqueeze(-1)], dim=1)
+        y = torch.cat([y, x], dim=1)
+        y = self.fc(y)
+
+        return y
+
+
 class NetSimple(nn.Module):
     def __init__(self, input_dim=10, output_dim=1):
         super(NetSimple, self).__init__()

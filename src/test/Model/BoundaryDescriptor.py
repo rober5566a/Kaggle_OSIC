@@ -100,8 +100,8 @@ def draw_bbox(img, feature_list, color=(0, 255, 0), width=2, isShow=True):
     return img_bbox
 
 
-def get_crop_img_ls(img, feature_list, extra_W=0, extra_H=0, isShow=False):
-    crop_img_ls = []
+def get_crop_img_list(img, feature_list, extra_W=0, extra_H=0, isShow=False):
+    crop_img_list = []
     for f in feature_list:
         (x, y, w, h) = f[3]
         x -= extra_W
@@ -121,15 +121,15 @@ def get_crop_img_ls(img, feature_list, extra_W=0, extra_H=0, isShow=False):
             h = img.shape[0] - y
 
         crop_img = img[y: y + h, x: x + w]
-        crop_img_ls.append(crop_img)
+        crop_img_list.append(crop_img)
 
     if isShow:
-        for crop_img in crop_img_ls:
+        for crop_img in crop_img_list:
             cv2.imshow("crop_img_bbox", crop_img)
             cv2.waitKey(0)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 pass
-    return crop_img_ls
+    return crop_img_list
 
 
 def draw_bbox2(img, feature_list, color=(0, 255, 0), width=2, isShow=True):
@@ -222,10 +222,10 @@ def get_signature_info(contours, center, isShow=False):
 
         center_dist_infos.update({theta: center_dist})
 
-    center_dist_infos_ls = sorted(
+    center_dist_infos_list = sorted(
         center_dist_infos.items(), key=lambda x: x[0])
     center_dist_infos = {}
-    for item in center_dist_infos_ls:
+    for item in center_dist_infos_list:
         center_dist_infos.update({item[0]: item[1]})
 
     if isShow is True:

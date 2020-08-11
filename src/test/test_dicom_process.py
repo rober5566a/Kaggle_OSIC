@@ -89,6 +89,16 @@ def main():
                 # continue
             lung_img = get_lung_img(ct_img.copy(), isShow=True)
             output_img = get_square_img(lung_img)
+
+            empty_img = np.ones(
+                (output_img.shape[0]+2, output_img.shape[1]+2), dtype='uint8') * output_img[0, 0]
+            empty_img[1:-1, 1:-1] = output_img
+            output_img = empty_img
+
+            lung_contour = get_biggest_countour(
+                output_img, THRESH_VALUE=1, isShow=False)
+            output_img = remove_img_nosie(
+                output_img, lung_contour, meanBackGround=True)
             cv2.imshow("1", output_img)
             # cv2.waitKey(0)
             # img_detect = cv2.cvtColor(img_lung, cv2.COLOR_BGR2GRAY)
@@ -100,7 +110,7 @@ def main():
                 continue
     except KeyboardInterrupt:
         print(filename)
-        cv2.imwrite('1.png', lung_img)
+        # cv2.imwrite('1.png', lung_img)
 
 
 if __name__ == "__main__":

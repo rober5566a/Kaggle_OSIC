@@ -309,9 +309,9 @@ def main():
     train_set = OsicDataset(train_arr, transform=train_transform, mode='train')
     val_set = OsicDataset(val_arr, transform=val_transform, mode='val')
 
-    model = OsicModel('_', net=NetOI(
+    model = OsicModel('_', net=NetOI_shun(
         input_dim=10, input_channel=1, output_dim=3), learning_rate=1e-4)
-    model.fit(train_set, val_set, epochs=120, checkpoint=20, batch_size=8)
+    model.fit(train_set, val_set, epochs=20, checkpoint=5, batch_size=8)
 
 
 if __name__ == '__main__':
